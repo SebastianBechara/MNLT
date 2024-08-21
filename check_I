@@ -1,0 +1,53 @@
+#! /usr/bin/env python3
+
+import os, sys, subprocess
+from subprocess import DEVNULL, PIPE
+
+def check_software(software):
+    try:
+        subprocess.run([software, '--version'], stdout=DEVNULL, stderr=DEVNULL)
+        return True
+    except FileNotFoundError:
+        return False
+
+def check_pythonModule(module):
+    try:
+        __import__(module)
+        return True
+    except ImportError:
+        return False
+
+def check_perlModule(module):
+    try:
+        r=subprocess.run(['perl','-M'+module,'-e', '1'], stdout=PIPE,stderr=PIPE)
+        if r.returncode==0: 
+            return True
+        else: 
+            return False
+    except subprocess.CalledProcessError:
+        return False
+    except FileNotFoundError:
+        return False
+
+if __name__ == '__main__':
+    software = ['python3', 'perl', 'samtools', 'hisat2', 'bowtie2', 'velveth', 'RepeatMasker', 'blat', 'muscle']#, 'hansLolo']
+    pythonModules = ['numpy','pandas','matplotlib','seaborn','Bio','scipy', 'sklearn' , 'umap','statsmodels']#, 'yubidubi']
+    perlModules = ['Statistics::R', 'Parallel::ForkManager','Bio::GFF3::LowLevel','Bio::DB::Sam']#, 'majamjam']
+    print('\nChecking software\n')
+    for soft in software:
+        if check_software(soft):
+            print(f'{soft.ljust(22)}  -  OK')
+        else:
+            print(f'{soft.ljust(22)}  -  Not Found')
+    print('\nChecking python modules\n')
+    for mod in pythonModules:
+        if check_pythonModule(mod):
+            print(f'{mod.ljust(22)}  -  OK')
+        else:
+            print(f'{mod.ljust(22)}  -  Not Found')
+    print('\nChecking Perl modules\n')
+    for mod in perlModules:
+        if check_perlModule(mod):
+            print(f'{mod.ljust(22)}  -  OK')
+        else:
+            print(f'{mod.ljust(22)}  -  Not Found')

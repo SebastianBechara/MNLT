@@ -1,0 +1,30 @@
+#! /bin/bash
+## This is a setup file for MNLT, it will change permissions for excecutables and such
+
+echo '## changing permissions'
+chmod u+x check_I check_II MNLT 
+
+for file in bin/*.py
+do
+    chmod u+x $file
+done
+
+for file in utils/*.py
+do
+    chmod u+x $file
+done
+
+echo '## setting MNLT to path'
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEST="$DIR/"
+
+if [ -f ~/.bashrc ]; then
+    echo '## set MNLT to path' >> ~/.bashrc
+    echo 'export PATH=$PATH:'"$DIR" >> ~/.bashrc
+else
+    echo '## set MNLT to path' > ~/.bashrc
+    echo 'export PATH=$PATH:'"$DIR" >> ~/.bashrc
+fi
+
+echo '## reloading shell'
+exec "$SHELL"

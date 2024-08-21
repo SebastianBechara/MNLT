@@ -1,0 +1,46 @@
+#! /bin/bash
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEST="$DIR/"
+
+echo -e '\nThis is the wrapper\n\n'
+./MNLT 
+sleep 2
+
+mods=(IRS_calc EWMA_Freq afterParties Clustering sRNA_hist MILORD afterMILORD)
+
+for m in ${mods[@]}
+do 
+    echo -e '\n\nThis is the submodule '$m'\n\n'
+    ./MNLT $m
+    sleep 2
+done
+
+echo -e '\n\nNow to actually run them!\n\n'
+mkdir TEST
+cd TEST
+
+echo -e '\n\nRunning IRS calculation\n\n'
+../MNLT IRS_calc --kd TEST --fwd ../testData/EV_MAC_L12_R1_trimmed_sampled.fq.gz \
+--rev ../testData/EV_MAC_L12_R2_trimmed_sampled.fq.gz  
+
+echo -e '\n\nGenerating EWMAs and frequency plots\n\n'
+cd ..
+./MNLT EWMA_Freq -i res/anno/All_IRS.tsv -s BOTH -k PGM Nowa1/2 Dcl2/3/5 -o TEST/
+
+echo -e '\n\nGenerating Estiennes correlation matrix\n\n'
+./MNLT afterParties --input_file res/anno/All_IRS.tsv \
+--output_matrix_image TEST/testCorrMat.png --experiment_columns 2 3 4 5 6 7 8 9 \
+--control_columns 60 61 62  
+
+echo -e '\n\nGenerating PCA as alternative for correlations\n\n'
+./MNLT Clustering -i res/anno/All_IRS.tsv -o TEST/
+
+echo -e '\n\nGenerating sRNA histogrammes\n\n'
+./MNLT sRNA_hist -d testData/sRNA/ -o TEST/
+
+echo -e '\n\nRuning MILORD\n\n'
+./MNLT MILORD -i testData/iswi_v_BowtieMACIES_sorted.bam -o TEST/ -g res/seqs/genomes/Ptet_MAC_IES.fa
+
+echo -e '\n\nProcessing MILORD output\n\n'
+./MNLT afterMILORD -g TEST/MILORD/MILORD.gff3 -o TEST/

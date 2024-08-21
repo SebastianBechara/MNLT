@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+## Author: Sebastian Bechara
+## Last Modified: 2024.08
+## Mail: ask Mariusz
+
+import os
+import sys
+import argparse
+import subprocess
+import bin.IRScalc as IRScalc
+import bin.EWMA_FreqPLOTS as ewmaFreq
+import bin.Clustering as clustering
+import bin.sRNAHist as sRNA
+import bin.afterMILORD as cryptAlt
+import bin.after_ParTIES as aftPar
+
+class NoSubparsersMetavarFormatter(argparse.HelpFormatter):
+
+    def _fill_text(self, text, width, indent):
+        return ''.join(indent + line for line in text.splitlines(keepends=True))
+
+    def _split_lines(self, text, width):
+        return text.splitlines()
+
+    def _format_action(self, action):
+        result = super()._format_action(action)
+        if isinstance(action, argparse._SubParsersAction):
+            # fix indentation on first line
+            return "%*s%s" % (self._current_indent, "", result.lstrip())
+        return result
+
+    def _format_action_invocation(self, action):
+        if isinstance(action, argparse._SubParsersAction):
+            # remove metavar and help line
+            return ""
+        return super()._format_action_invocation(action)
+
+    def _iter_indented_subactions(self, action):
+        if isinstance(action, argparse._SubParsersAction):
+            try:
+                get_subactions = action._get_subactions
+            except AttributeError:
+                pass
+            else:
+                # remove indentation
+                yield from get_subactions()
+        else:
+            yield from super()._iter_indented_subactions(action)
+
+def call_perl(script, *args):
+    path = os.path.join(os.path.dirname(__file__), 'tpp/ParTIES', script)
+    try:
+        result = subprocess.run([path] + list(args), check=True, text=True, capture_output=True)
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(f'Error while running ParTIES: {e.stderr}', file=sys.stderr)
+
+def main():
+    des = '''
+############################################################################
+A wrapper script for multiple sub-scripts. Contains the following scripts:
+  *  IRScalc.py :: Calculates IRS
+  *  EWMA_FreqPLOTS.py :: Generates EWMA and nucleotide frequency plots
+  *  afterParTIES.py :: Generates Estiennes correlation matrices
+  *  Clustering.py :: Alternative for Estiennes correlation matrices using
+                     dimensional reduction
+  *  sRNAHist.py :: Generates the typical sRNA barplots
+  *  ParTIES_MILORD :: MILORD submodule of the software package for
+                       paramecium tools
+  *  afterMILORD.py :: Generates alternative / cryptic excision plots
+############################################################################
+Usage:
+    MNLT.py <Module> <Module arguments>
+'''
+
+    wrapper = argparse.ArgumentParser(description=des,
+                                      allow_abbrev=False,
+                                      add_help=False,
+                                      usage=argparse.SUPPRESS,
+                                      formatter_class=NoSubparsersMetavarFormatter)#argparse.RawTextHelpFormatter)
+
+    subParsers = wrapper.add_subparsers(title='Modules', dest='MODULES')
+
+    parser_IRScalc = subParsers.add_parser('IRS_calc',
+                                           description='This module will calculate IES retention score if given a bam file or paired sequencing file',
+                                           add_help=False,
+                                           formatter_class=NoSubparsersMetavarFormatter,
+                                           usage=argparse.SUPPRESS,
+                                           help='Run IRS calculation',
+                                        #    parents=[simpleParent[0]])
+                                           parents=[IRScalc.check_args()])#[0]])
+
+    ## subparser for EWMA and frequency plots
+    parser_EWMA_Freq = subParsers.add_parser('EWMA_Freq',
+                                             description='This module calculates the weighted moving IRS average by IES length and the Frequency of the first 3 nucleotides in IESs',
+                                             add_help=False,
+                                             formatter_class=NoSubparsersMetavarFormatter,
+                                             usage=argparse.SUPPRESS,
+                                             help='Run EWMA and Frequency calculation',
+                                             parents=[ewmaFreq.argParse()])#[0]])
+
+    ## subparser for afterParTIES
+    parser_aftPar = subParsers.add_parser('afterParties',
+                                          description='',
+                                          add_help=False,
+                                          formatter_class=NoSubparsersMetavarFormatter,
+                                          usage=argparse.SUPPRESS,
+                                          help='Run Estiennes correlation analysis',
+                                          parents=[aftPar.argParse()])#[0]])
+
+    ## subparser for clustering as alternative to correlations
+    parser_Clustering = subParsers.add_parser('Clustering',
+                                              description='',
+                                              add_help=False,
+                                              formatter_class=NoSubparsersMetavarFormatter,
+                                              usage=argparse.SUPPRESS,
+                                              help='Run clustering using dimension reduction',
+                                              parents=[clustering.argParse()])#[0]])
+
+    ## subparser for sRNA histograms
+    parser_sRNA = subParsers.add_parser('sRNA_hist',
+                                        description='',
+                                        add_help=False,
+                                        formatter_class=NoSubparsersMetavarFormatter,
+                                        usage=argparse.SUPPRESS,
+                                        help='Create sRNA histogrammes',
+                                        parents=[sRNA.argParse()])#[1]])
+
+    ## subparser for MILORD
+    parser_MILORD = subParsers.add_parser('MILORD',
+                                          description='Wrapper for the MILORD submodule of the ParTIES program. Will estimate excision events that can be categorised into IES, ALTERNATIVE and CRYPTIC',
+                                          add_help=False,
+                                          formatter_class=NoSubparsersMetavarFormatter,
+                                          usage=argparse.SUPPRESS,
+                                          help='Run ParTIES submodule MILORD for excision events',)
+    parserMILORDReq = parser_MILORD.add_argument_group('required')
+    parserMILORDReq.add_argument('-i', '--inBam',
+                                #  required=True,
+                                 help='Specify BAM file')
+    parserMILORDReq.add_argument('-o', '--outDir',
+                                #  required=True,
+                                 help='Specify output directory. Default is current directory')
+    parserMILORDReq.add_argument('-g', '--genome',
+                                #  required=True,
+                                 help='Specify the reference genome')
+    parserMILORDOpt = parser_MILORD.add_argument_group('Optional')
+    parserMILORDOpt.add_argument('-m', '--minSize',
+                                 type=int,
+                                 default= 5,
+                                 help='Minimum size for a deletion to be reported [Default: 5]')
+    parserMILORDOpt.add_argument('-M', '--maxSize',
+                                 type=int,
+                                 default=10000,
+                                 help='Maximum size for a deletion to be reported [Default: 10k]')
+    p = '/'.join(os.path.abspath(__file__).split('/')[:-1])
+    parserMILORDOpt.add_argument('-I', '--IES',
+                                 action='store',
+                                 default=f'{p}/res/anno/internal_eliminated_sequence_PGM_ParTIES.pt_51_with_ies.gff3',
+                                 help='Specify an IES file (GFF3) [Default: gff3 in res/anno/]')
+    parserMILORDOpt.add_argument('-f', '--flankSeq',
+                                 type=int,
+                                 default=15,
+                                 help='Length of the flanking sequence to report [Default: 15]')
+    parserMILORDOpt.add_argument('-F', '--force',
+                                 default=False,
+                                 help='Overwrite existing MILORD directory [Default: False]')
+    parserMILORDOpt.add_argument('-t', '--threads',
+                                 type=int,
+                                 default=6,
+                                 help='How many threads to use [Default: 6]')
+    parserMILORDOpt.add_argument('-h', '--help',
+                                 action='help',
+                                 help='Show this message and exit')
+
+    ## subparser for afterMILORD
+    parser_cryptAlt = subParsers.add_parser('afterMILORD',
+                                            description='',
+                                            add_help=False,
+                                            formatter_class=NoSubparsersMetavarFormatter,
+                                            usage=argparse.SUPPRESS,
+                                            help='Create cryotic/alternate excision plots',
+                                            parents=[cryptAlt.argParse()])#[0]])
+
+    opto = wrapper.add_argument_group('Optional')
+    opto.add_argument('-h', '--help',
+                      action='help',
+                      help='Show this help message and exit')
+
+
+    args = wrapper.parse_args()
+
+    if len(sys.argv) == 1:
+        wrapper.print_help(sys.stderr)
+        sys.exit()
+
+    if args.MODULES not in ['IRS_calc','EWMA_Freq','afterParties','Clustering','sRNA_hist','MILORD','afterMILORD']:
+        sys.exit()
+
+    if args.MODULES == 'EWMA_Freq':
+        ewmaFreq.main(args)    
+    elif args.MODULES == 'IRS_calc':
+        delattr(args, 'MODULES')
+        IRScalc.main(args)
+    elif args.MODULES == 'afterParties':
+        delattr(args, 'MODULES')
+        aftPar.main(args)
+    elif args.MODULES == 'Clustering':
+        #delattr(args, 'MODULES')
+        clustering.main(args)
+    elif args.MODULES == 'sRNA_hist':
+        sRNA.main(args)
+    elif args.MODULES == 'MILORD':
+        if len(sys.argv) == 2:
+            parser_MILORD.print_help(sys.stderr)
+            sys.exit()
+        if not args.inBam:
+            print('ERROR!! Missing input file!')
+            parser_MILORD.print_help(sys.stderr)
+            sys.exit()
+        if not args.outDir:
+            print('ERROR!! Missing output directory!')
+            parser_MILORD.print_help(sys.stderr)
+            sys.exit()
+        else:
+            if not os.path.isdir(args.outDir):
+                os.mkdir(args.outDir)
+        if not args.genome:
+            print('ERROR!! Missing reference genome!')
+            parser_MILORD.print_help(sys.stderr)
+            sys.exit()
+        
+        call_perl('parties', 'MILORD', '-bam', args.inBam, '-out_dir', args.outDir, '-genome', args.genome,
+                  '-min_size', str(args.minSize) if args.minSize else '',
+                  '-max_size', str(args.maxSize) if args.maxSize else '',
+                  '-ies', args.IES if args.IES else '',
+                  '-junction_flank_seq_length', str(args.flankSeq) if args.flankSeq else '',
+                  '-force', str(args.force) if args.force else '',
+                  '-threads', str(args.threads) if args.threads else '')
+    elif args.MODULES == 'afterMILORD':
+        delattr(args, 'MODULES')
+        cryptAlt.main(args)
+
+if __name__ == '__main__':
+    main()
