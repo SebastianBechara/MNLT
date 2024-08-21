@@ -1,0 +1,3 @@
+IMPORTANT!!!
+
+Due to me not owning a fancy github account that costs money I cannot upload anything bigger than ~25 - 30 mb. I will upload a version with out big files. These are mainly the testData directory, references under MNLT/res/ref and the genomes in MNLT/res/seqs/genomes. You'll need to copy these from the uni IZB server. The full toolset is uploaded here: smb://nas-izb.unibe.ch/groups/IZB_Groups/Nowacki/BioinformaticTools/MNLT
