@@ -4,7 +4,8 @@ This is a repository for the Mariusz Nowacki Lab Tool-box.
 It comprises some common workflows bundled together in a python program. 
 
 ## Install
-This tool box require a bunch of other programs. An installation guide is provided at the begining of the documentation. Once all dependencies are installed you can invoke the `check` scripts to see if everything works properly. `check_I` will just try to find the dependencies and `check_II` will run the full program using a test set. This will take quite a while, also ich will use 6 threads. If you are working on an old machine you may want to check the required programs by hand.
+This tool box require a bunch of other programs. An installation guide is provided at the begining of the documentation. Once all dependencies are installed you can invoke the `check` scripts to see if everything works properly. `check_I` will just try to find the dependencies and `check_II` will run the full program using a test set. This will take quite a while, also ich will use 6 threads. If you are working on an old machine you may want to check the required programs by hand.\
+**Important:**I can't upload files larger than ~25 mb. To have it working properly you'll need to get the res and testData directory from the izb server
 
 ## Usage
 A full walkthrough of the different modules is provided in the documentation. 
